@@ -1,0 +1,23 @@
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+
+WORKDIR /src
+
+COPY CoffeeNChill.Gateway/CoffeeNChill.Gateway.csproj CoffeeNChill.Gateway/
+
+RUN dotnet restore CoffeeNChill.Gateway/CoffeeNChill.Gateway.csproj
+
+COPY CoffeeNChill.Gateway/ CoffeeNChill.Gateway/
+
+RUN dotnet publish CoffeeNChill.Gateway/CoffeeNChill.Gateway.csproj -c Release -o /app/publish --no-restore
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0
+
+WORKDIR /app
+
+COPY --from=build /app/publish .
+
+ENV ASPNETCORE_URLS=http://+:8080
+
+EXPOSE 8080
+
+ENTRYPOINT ["dotnet", "CoffeeNChill.Gateway.dll"]

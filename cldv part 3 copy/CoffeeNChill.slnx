@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".dockerignore" />
+    <File Path=".env" />
+    <File Path=".gitignore" />
+    <File Path="docker-compose.hub.yml" />
+    <File Path="docker-compose.yml" />
+    <File Path="Dockerfile" />
+  </Folder>
+  <Project Path="CoffeeNChill.Gateway/CoffeeNChill.Gateway.csproj" Id="f494bd47-b005-49a5-a302-66c0554936b0" />
+  <Project Path="CoffeeNChill/CoffeeNChill.csproj" />
+</Solution>
