@@ -1,41 +1,34 @@
-## CI/CD and deployment
+# CoffeeNChill — CI/CD
 
-This project includes a GitHub Actions workflow for continuous integration and delivery. On pushes to `main`, the workflow installs the required .NET SDKs, runs build checks, and builds both Docker images for the CoffeeNChill services.
+GitHub Actions builds the .NET 10 Gateway on pushes and pull requests to `main`. It builds the .NET 8 backend when its source is available, then publishes Docker images tagged `:part3` on pushes to `main`.
 
-The workflow publishes:
+> The backend project is currently missing from this repository. Add `cldv part 3 copy/CoffeeNChill/CoffeeNChill.csproj` and its source to enable the backend build and image publish. Until then, the workflow reports a warning and skips that step; it cannot publish an image for absent code.
 
-- `${DOCKERHUB_USERNAME}/coffeenchill-backend:part3`
-- `${DOCKERHUB_USERNAME}/coffeenchill-gateway:part3`
+## Docker Hub setup
 
-Add these GitHub repository secrets:
+Add these repository secrets in **Settings → Secrets and variables → Actions**:
 
 - `DOCKERHUB_USERNAME`
-- `DOCKERHUB_TOKEN`
+- `DOCKERHUB_TOKEN` (a Docker Hub access token)
 
-Optional deployment is available for a Google Cloud VPS. Enable it by setting:
+Create the Docker Hub repositories `coffeenchill-backend` and `coffeenchill-gateway` under that account. The workflow publishes `coffeenchill-gateway:part3` and, when backend source is present, `coffeenchill-backend:part3`.
 
-- repository variable: `ENABLE_SSH_DEPLOY=true`
+## Optional Google Cloud VPS deployment
 
-Then add:
+Deployment is disabled by default. To enable it, set repository variable `ENABLE_SSH_DEPLOY` to `true`, then add these repository secrets:
 
-- `GCP_VPS_HOST`
-- `GCP_VPS_USER`
-- `GCP_VPS_SSH_PRIVATE_KEY`
-- `GCP_VPS_KNOWN_HOSTS`
-- `GCP_VPS_SSH_PORT` (optional, default `22`)
+- `GCP_VPS_HOST`, `GCP_VPS_USER`
+- `GCP_VPS_SSH_PRIVATE_KEY`, `GCP_VPS_KNOWN_HOSTS`
+- `GCP_VPS_SSH_PORT` (optional; defaults to `22`)
 
-The VPS deployment uses SSH and Docker Compose to pull the latest images and start the containers. It does not remove persistent storage or volumes, so existing data remains intact.
+The VPS needs Docker Compose and `/opt/coffeenchill/.env` containing `DOCKERHUB_USERNAME`, `AZUREWEBJOBS_STORAGE`, `STORAGE_CONNECTION_STRING`, and `JWT_SIGNING_KEY`. Optional `JWT_ISSUER` and `JWT_AUDIENCE` default to `CoffeeNChill.Gateway` and `CoffeeNChill.Clients`. Restrict access to `.env` (for example, `chmod 600`) and never commit credentials.
 
-Create a secure `.env` file on the VPS with values such as:
+Deployment pulls the images and runs `docker compose up -d`; it does not run volume-removal or cleanup commands. Persistent data is not deleted. The backend deployment will only run once its source has been added and published.
+
+## Local Gateway build
 
 ```bash
-DOCKERHUB_USERNAME=your_dockerhub_username
-AZUREWEBJOBS_STORAGE=your_storage_connection_string
-STORAGE_CONNECTION_STRING=your_storage_connection_string
-JWT_SIGNING_KEY=your_base64_jwt_key
-JWT_ISSUER=CoffeeNChill.Gateway
-JWT_AUDIENCE=CoffeeNChill.Clients
+cd "cldv part 3 copy"
+dotnet restore CoffeeNChill.Gateway/CoffeeNChill.Gateway.csproj
+dotnet build CoffeeNChill.Gateway/CoffeeNChill.Gateway.csproj --configuration Release --no-restore
 ```
-
-Keep all credentials in GitHub Secrets or a protected VPS `.env` file. Never commit credentials to the repository.
-
