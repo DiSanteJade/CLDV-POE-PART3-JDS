@@ -1,4 +1,3 @@
-
 using CoffeeNChill.Gateway.Services;
 using CoffeeNChill.Gateway.DTOs;
 using CoffeeNChill.Gateway.Endpoints;
@@ -10,6 +9,8 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// JWT setup keeps requests trustworthy and safe.
 
 // JWT configuration
 var jwtIssuer = builder.Configuration["Jwt:Issuer"]
@@ -213,4 +214,3 @@ static async Task<IResult> ForwardMenuGet(
         );
     }
 }
-
