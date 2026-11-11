@@ -1,0 +1,107 @@
+
+name: CoffeeNChill Automated API Tests
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  api-tests:
+    name: Test Live CoffeeNChill API
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    env:
+      BASE_URL: https://34-63-96-50.sslip.io
+
+    steps:
+      - name: Run API and JWT security tests
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          BASE="${BASE_URL%/}"
+          WORKDIR="$(mktemp -d)"
+          trap 'rm -rf "$WORKDIR"' EXIT
+          cd "$WORKDIR"
+
+          expect() {
+            local expected="$1"
+            local method="$2"
+            local path="$3"
+            local output="$4"
+            shift 4
+
+            local code
+            code=$(curl --silent --show-error --max-time 20 \
+              -X "$method" \
+              -o "$output" \
+              -w '%{http_code}' \
+              "$@" \
+              "$BASE$path")
+
+            if [ "$code" != "$expected" ]; then
+              echo "::error::$method $path returned $code; expected $expected"
+              exit 1
+            fi
+
+            echo "PASS $method $path - HTTP $code"
+          }
+
+          expect 200 GET /api/gateway/health health.json
+          jq -e '.status == "Running"' health.json > /dev/null
+
+          expect 200 GET /api/menu menu.json
+          jq -e 'type == "array"' menu.json > /dev/null
+
+          expect 401 GET /api/auth/me anonymous.json
+          expect 401 GET /api/documents anonymous-docs.json
+
+          EMAIL="ci-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-$(date +%s)-${RANDOM}@example.com"
+          PASSWORD="Cnc!$(openssl rand -hex 16)"
+
+          jq -n \
+            --arg name "CI Test Customer" \
+            --arg email "$EMAIL" \
+            --arg password "$PASSWORD" \
+            '{fullName:$name,email:$email,password:$password}' \
+            > register-request.json
+
+          expect 201 POST /api/auth/register registered.json \
+            -H "Content-Type: application/json" \
+            --data-binary @register-request.json
+
+          jq -n \
+            --arg email "$EMAIL" \
+            --arg password "$PASSWORD" \
+            '{email:$email,password:$password}' \
+            > login-request.json
+
+          expect 200 POST /api/auth/login login.json \
+            -H "Content-Type: application/json" \
+            --data-binary @login-request.json
+
+          TOKEN="$(jq -r '.accessToken // empty' login.json)"
+
+          if [ -z "$TOKEN" ]; then
+            echo "::error::Login response contains no JWT"
+            exit 1
+          fi
+
+          echo "PASS JWT issued successfully"
+
+          expect 200 GET /api/auth/me profile.json \
+            -H "Authorization: Bearer $TOKEN"
+
+          jq -e --arg email "$EMAIL" \
+            '.email == $email and .role == "Customer"' \
+            profile.json > /dev/null
+
+          expect 403 GET /api/documents forbidden.json \
+            -H "Authorization: Bearer $TOKEN"
+
+          echo "ALL AUTOMATED API TESTS PASSED"
