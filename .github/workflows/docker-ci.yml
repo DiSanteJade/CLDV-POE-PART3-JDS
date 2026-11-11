@@ -13,6 +13,10 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
 
+    defaults:
+      run:
+        working-directory: "cldv part 3 copy"
+
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -32,7 +36,7 @@ jobs:
           if [ -f CoffeeNChill/CoffeeNChill.csproj ]; then
             dotnet build CoffeeNChill/CoffeeNChill.csproj --configuration Release
           else
-            echo "::warning::Backend source is missing from the repository."
+            echo "::warning::Backend source is missing."
           fi
 
       - name: Set up Docker Buildx
@@ -47,8 +51,8 @@ jobs:
       - name: Build and push Gateway
         uses: docker/build-push-action@v6
         with:
-          context: .
-          file: ./Dockerfile.gateway
+          context: "./cldv part 3 copy"
+          file: "./cldv part 3 copy/Dockerfile.gateway"
           push: true
           tags: disantejade154362/coffeenchill-gateway:part3
 
@@ -58,5 +62,5 @@ jobs:
             docker build -f Dockerfile -t disantejade154362/coffeenchill-backend:part3 .
             docker push disantejade154362/coffeenchill-backend:part3
           else
-            echo "::warning::Backend build skipped because source or Dockerfile is missing."
+            echo "::warning::Backend image skipped because source or Dockerfile is missing."
           fi
